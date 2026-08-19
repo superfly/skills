@@ -1,6 +1,9 @@
 # Sprites Agent Skills
 
+<!-- The skills.sh badge renders "resource not found" until the repository is
+     public and indexed by the directory. Restore this line once it is:
 [![skills.sh](https://skills.sh/b/superfly/sprites-skills)](https://skills.sh/superfly/sprites-skills)
+-->
 
 Agent Skills for [Sprites](https://sprites.dev) — isolated, persistent cloud
 Linux environments from Fly.io, with their own filesystem, URL, services,
