@@ -73,7 +73,8 @@ python3 scripts/validate_skills.py
 ```
 
 It checks frontmatter fields, name/directory agreement, description quality,
-and relative links. CI runs the same script.
+and relative links. The GitHub Actions workflow in `.github/workflows/ci.yml`
+runs the same script on every push and pull request.
 
 ## License
 
