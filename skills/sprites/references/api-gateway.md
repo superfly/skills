@@ -1,12 +1,3 @@
----
-name: sprites-api-gateway
-description: Use this skill when work inside a Sprite needs an external API — GitHub, Slack, Linear, Discourse, S3-compatible storage, or any token-authenticated service. The Sprites API gateway at api.sprites.dev injects credentials for you, so a sprite never holds raw API keys. Trigger it for third-party integrations, authenticated API calls from a sprite, or "how do I give this sprite access to X".
-license: MIT
-metadata:
-  author: Fly.io
-  version: "1.0.0"
----
-
 # Sprites API gateway
 
 The gateway proxies outbound API calls and adds the credentials on the way

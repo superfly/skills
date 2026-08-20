@@ -1,12 +1,3 @@
----
-name: sprites-network-policy
-description: Use this skill when outbound network access from a Sprite is blocked, or when the user wants to allow, deny, or audit which domains a sprite can reach. Trigger it for DNS or egress errors during package installs, git operations, or API calls from a sprite, and for any request to change the sprite's network policy. The update replaces the entire rule set, so read before you write.
-license: MIT
-metadata:
-  author: Fly.io
-  version: "1.0.0"
----
-
 # Sprite network policy
 
 A sprite's outbound traffic is filtered by a DNS-based allow/deny list. Code in
@@ -77,5 +68,5 @@ and device restrictions, and `/v1/sprites/<name>/policy/resources` for memory
 limits. Treat both as security-relevant and confirm before changing them.
 
 If the goal is to call a third-party API rather than to reach a general host,
-prefer the gateway — see the `sprites-api-gateway` skill. It needs no policy
+prefer the gateway — see [api-gateway.md](api-gateway.md). It needs no policy
 change and keeps the credential out of the sprite.

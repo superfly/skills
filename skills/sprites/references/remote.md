@@ -1,19 +1,10 @@
----
-name: sprites-remote
-description: Use this skill to drive Sprites from outside one — from a laptop, CI job, or another host. Trigger it to create or destroy a sprite, list sprites, choose which sprite a directory targets, run a command remotely, open a shell, push or pull files, forward a port, or authenticate the `sprite` CLI. This is the skill for "run this on a sprite", "spin up a sandbox", or "test it somewhere isolated".
-license: MIT
-metadata:
-  author: Fly.io
-  version: "1.0.0"
----
-
 # Driving Sprites remotely
 
 The `sprite` CLI is the control plane for sprites you are not inside. It talks
 to `https://api.sprites.dev` and nearly every command needs a target sprite.
 
 If `/.sprite/api.sock` exists you are already inside a sprite; use `sprite-env`
-instead and read the `sprites` skill.
+instead — see the main skill and [environment-detection.md](environment-detection.md).
 
 ## Setup
 
@@ -91,7 +82,7 @@ Each `exec` becomes a session. `sprite sessions list`, `sprite sessions attach
 detach and resume on reattach, so output is not lost.
 
 Anything that must outlive the command — a server, a worker, a database — is a
-service, not an exec. See the `sprites-services` skill.
+service, not an exec. See [services.md](services.md).
 
 ## Files
 
@@ -104,7 +95,7 @@ sprite file edit -s dev /etc/app.conf
 Prefer `git clone` inside the sprite over pushing a working tree. Never push
 `.git/`, `node_modules/` and other dependency caches, `.env` files, key
 material, or shell history. See
-[files](../sprites/references/files.md) for the full boundary list and for the
+[files.md](files.md) for the full boundary list and for the
 `fs` HTTP endpoints.
 
 ## Ports and URLs
@@ -135,7 +126,7 @@ sprite api "/v1/sprites/dev/services"
 ```
 
 For a direct HTTP client, see
-[http-api.md](../sprites/references/http-api.md): base URL
+[http-api.md](http-api.md): base URL
 `https://api.sprites.dev`, header `Authorization: Bearer <org-token>`.
 
 ## Report back

@@ -1,12 +1,3 @@
----
-name: sprites-services
-description: Use this skill to run long-lived processes in a Sprite — web servers, APIs, workers, databases, queues, agents — and to expose one of them on the sprite's public URL. Trigger it for "start the dev server", "keep this running", "give me a preview URL", restarting or stopping a service, or reading service logs. Services survive disconnects and reboots; a plain background command does not.
-license: MIT
-metadata:
-  author: Fly.io
-  version: "1.0.0"
----
-
 # Sprites services
 
 A service is a supervised process. The sprite restarts it after a reboot, keeps

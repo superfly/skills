@@ -1,12 +1,3 @@
----
-name: sprites-checkpoints
-description: Use this skill to snapshot and roll back a Sprite's filesystem. Trigger it before risky work (package upgrades, migrations, bulk edits, untrusted code), after a change is confirmed working, and for any request to save, snapshot, roll back, restore, or undo the environment. Checkpoints are copy-on-write and take seconds, so take them often.
-license: MIT
-metadata:
-  author: Fly.io
-  version: "1.0.0"
----
-
 # Sprites checkpoints
 
 A checkpoint is a point-in-time snapshot of the sprite's writable filesystem

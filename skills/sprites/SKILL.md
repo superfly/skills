@@ -1,6 +1,6 @@
 ---
 name: sprites
-description: Use this skill for Sprites — isolated, persistent cloud Linux environments from Fly.io with their own filesystem, URL, services, checkpoints, and network policy. Trigger it to create, list, inspect, or destroy sprites, to run builds/tests/agents in a remote sandbox, to expose a preview URL, to snapshot and roll back state, or whenever the user names Sprites, sprite-env, or sprites.dev. It works both from inside a sprite and from a machine outside one.
+description: Use this skill for Sprites — isolated, persistent cloud Linux environments from Fly.io with their own filesystem, URL, services, checkpoints, and network policy. Trigger it to create, list, exec into, or destroy sprites; to run builds, tests, or agents in a remote sandbox; to start long-running services and expose a preview URL; to snapshot and roll back state; to change outbound network rules; to call third-party APIs (GitHub, Slack, etc.) through the credential-injecting gateway; or whenever the user names Sprites, sprite-env, or sprites.dev. Works both from inside a sprite and from a machine outside one.
 license: MIT
 metadata:
   author: Fly.io
@@ -14,8 +14,8 @@ A sprite is a persistent, hardware-isolated Linux environment. It keeps its
 filesystem between sessions, gets a public hostname, runs services that survive
 disconnects, and can be snapshotted and restored in seconds.
 
-**Before anything else, work out where you are running.** Every command in this
-skill family has two forms, and picking the wrong one wastes a turn.
+**Before anything else, work out where you are running.** Every operation has
+two forms, and picking the wrong one wastes a turn.
 
 ## Step 1: detect the context
 
@@ -45,19 +45,17 @@ for the fallbacks when neither binary is installed.
 
 ## Step 2: pick the smallest operation
 
-| Goal | Inside a sprite | Outside a sprite |
-| --- | --- | --- |
-| Identify the environment | `sprite-env info` | `sprite list`, `sprite url -s <name>` |
-| Run a command | Run it directly in the shell | `sprite exec -s <name> -- <cmd>` |
-| Keep a process alive | `sprite-env services create ...` | `sprite exec -s <name> -- sprite-env services create ...` |
-| Snapshot state | `sprite-env checkpoints create` | `sprite checkpoint create -s <name>` |
-| Move files in or out | Ordinary file tools, or `git clone` | `sprite file push` / `sprite file pull` |
-| Reach an external API | The gateway at `api.sprites.dev` | Run the gateway call inside the sprite |
-| Create or delete an environment | Not possible | `sprite create` / `sprite destroy` |
-
-Detailed procedures live in the companion skills: `sprites-remote`,
-`sprites-services`, `sprites-checkpoints`, `sprites-network-policy`, and
-`sprites-api-gateway`.
+| Goal | Inside a sprite | Outside a sprite | Reference |
+| --- | --- | --- | --- |
+| Identify the environment | `sprite-env info` | `sprite list`, `sprite url -s <name>` | [environment-detection.md](references/environment-detection.md) |
+| Run a command | Run it directly in the shell | `sprite exec -s <name> -- <cmd>` | [remote.md](references/remote.md) |
+| Keep a process alive | `sprite-env services create ...` | `sprite exec -s <name> -- sprite-env services create ...` | [services.md](references/services.md) |
+| Expose a preview URL | `--http-port` on the service | same, plus `sprite url` | [services.md](references/services.md) |
+| Snapshot / roll back state | `sprite-env checkpoints create` | `sprite checkpoint create -s <name>` | [checkpoints.md](references/checkpoints.md) |
+| Move files in or out | Ordinary file tools, or `git clone` | `sprite file push` / `sprite file pull` | [files.md](references/files.md) |
+| Allow or deny outbound domains | read-only from inside | `sprite api .../policy/network` | [network-policy.md](references/network-policy.md) |
+| Reach a third-party API | Gateway at `api.sprites.dev/v1/gateway` | Run the gateway call inside the sprite | [api-gateway.md](references/api-gateway.md) |
+| Create or delete an environment | Not possible | `sprite create` / `sprite destroy` | [remote.md](references/remote.md) |
 
 ## Golden path
 
@@ -87,8 +85,20 @@ Full detail in [safety](references/safety.md).
 
 ## References
 
+Read the one that matches the task; each is self-contained.
+
 - [environment-detection.md](references/environment-detection.md) — deciding
   inside vs outside, installing either CLI, and auth setup.
+- [remote.md](references/remote.md) — driving sprites from outside: create,
+  list, exec, sessions, files, ports, destroy.
+- [services.md](references/services.md) — long-running processes, the service
+  manager, and the public HTTP URL.
+- [checkpoints.md](references/checkpoints.md) — snapshots, rollback, and
+  reading old files from mounted checkpoints.
+- [network-policy.md](references/network-policy.md) — outbound egress rules
+  and the read-modify-write update procedure.
+- [api-gateway.md](references/api-gateway.md) — third-party APIs (GitHub,
+  Slack, …) with credentials injected by the gateway.
 - [cli.md](references/cli.md) — the full `sprite-env` and `sprite` command
   surface.
 - [http-api.md](references/http-api.md) — REST endpoints behind both CLIs, for
