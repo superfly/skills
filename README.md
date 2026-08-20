@@ -2,7 +2,7 @@
 
 <!-- The skills.sh badge renders "resource not found" until the repository is
      public and indexed by the directory. Restore this line once it is:
-[![skills.sh](https://skills.sh/b/superfly/sprites-skills)](https://skills.sh/superfly/sprites-skills)
+[![skills.sh](https://skills.sh/b/superfly/skills)](https://skills.sh/superfly/skills)
 -->
 
 Agent Skills for [Sprites](https://sprites.dev) — isolated, persistent cloud
@@ -10,7 +10,7 @@ Linux environments from Fly.io, with their own filesystem, URL, services,
 checkpoints, and network policy.
 
 ```bash
-npx skills add superfly/sprites-skills
+npx skills add superfly/skills
 ```
 
 Install into any agent that supports the
