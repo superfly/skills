@@ -54,6 +54,14 @@ plane, then follow the reference that matches the task. The references under
 | `files.md` | Moving code and data in and out |
 | `safety.md` | Confirmation rules and exposure limits |
 
+## The `brand` skill
+
+[`skills/brand/`](skills/brand/) teaches agents to use the Fly.io brand
+from its source of truth, [branding.fly.dev](https://branding.fly.dev): logos,
+colors & contrast, typography, imagery, voice & naming, partner lockups and
+usage terms. It has the agent explore the site's WebMCP tools with
+`npx agent-browser` first, and fall back to `curl -s https://branding.fly.dev/brand.json`.
+
 ## Layout
 
 ```
@@ -61,6 +69,8 @@ skills/
   sprites/
     SKILL.md
     references/*.md
+  brand/
+    SKILL.md
 ```
 
 This is the standard skills.sh layout: a skill directory under `skills/`
