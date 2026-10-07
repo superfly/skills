@@ -1,10 +1,10 @@
 ---
 name: brand
-description: Use this skill whenever work should look or sound like Fly.io — choosing or placing a Fly.io logo, picking brand colors or checking text contrast, setting type in the Fly.io typefaces, finding Fly.io illustrations or putting text on them, co-branding with a partner, writing in the Fly.io voice or spelling product names (Fly.io, Fly Machines, Sprites, flyctl), or checking what the brand assets may be used for. Trigger it for slides, docs, UI, social cards, emails or marketing copy that use the Fly.io brand.
+description: Use this skill whenever work should look or sound like Fly.io — choosing or placing a Fly.io logo, picking brand colors, status colors or gradients, checking text contrast, styling buttons, terminals or code blocks, setting type in the Fly.io typefaces (including hero titles), finding Fly.io illustrations or putting text on them, co-branding with a partner, writing in the Fly.io voice or spelling product names (Fly.io, Fly Machines, Sprites, flyctl), or checking what the brand assets may be used for. Trigger it for slides, docs, UI, social cards, emails or marketing copy that use the Fly.io brand.
 license: MIT
 metadata:
   author: Fly.io
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://branding.fly.dev
 ---
 
@@ -52,9 +52,10 @@ npx -y agent-browser close
 | `recommend_logo` | The right logo file for a placement, with clear-space & size rules | `{"background":"light\|dark\|photo","space":"wide\|tall\|tiny\|avatar"}` |
 | `list_logos` | Every logo file (SVG, PNG, ZIP), filterable | `{"layout":"brandmark","background":"dark"}` |
 | `get_partner_lockup_rules` | Placing the Fly.io logo next to a partner's | — |
-| `get_colors` | Hex values by group | `{"group":"logo\|core\|navy\|violet\|purple\|gray"}` |
+| `get_colors` | Hex values by group; `status` gives the success, info, warning & error scales; `gradients` gives named gradients & mesh backgrounds as CSS, plus button styles | `{"group":"logo\|core\|navy\|violet\|purple\|gray\|status\|gradients"}` |
 | `check_contrast` | WCAG ratio & AA/AAA pass/fail before putting text on a color | `{"foreground":"#…","background":"#…"}` |
-| `get_typography` | Typefaces, weights, font URLs, type scale, pairings & rules | — |
+| `get_typography` | Typefaces, weights, font URLs, type scale, the hero-title style & its scribble underline, pairings & rules | — |
+| `get_code_styles` | Terminal window anatomy, the syntax color palette & code-block rules | — |
 | `list_imagery` | Illustrations (newest first) with URLs & alt text, plus text-on-image rules | `{"kind":"hero\|editorial\|spot"}` |
 | `get_voice_guidelines` | Voice principles with real examples, tone by context, product naming | — |
 | `get_usage_terms` | What the brand may & may not be used for | — |
@@ -82,8 +83,10 @@ curl -s https://branding.fly.dev/brand.json | jq '.voice.naming'
 | `logos`, `logoKinds`, `logoVariants`, `logoRules` | Logo files & when to use each, clear space, minimum size, misuse |
 | `balloonMark` | The balloon on its own for avatars & app icons |
 | `partnerRules` | Co-branding lockups |
-| `colors` | `logo`, `core`, `scales` & contrast-checked `pairings` |
-| `typography` | `typefaces`, `scale`, `pairings`, `rules` |
+| `colors` | `logo`, `core`, `scales`, `status` scales & contrast-checked `pairings` |
+| `gradients` | `named` gradients & `mesh` backgrounds (CSS), `buttons` styles |
+| `typography` | `typefaces`, `scale`, `heroTitle`, `pairings`, `rules` |
+| `code` | Terminal anatomy, `syntax` colors, `rules` |
 | `imagery` | `illustrations`, usage `rules`, `textOnImage` |
 | `voice` | `principles`, tone by `contexts`, product `naming` |
 | `usage` | `allowed`, `notAllowed`, `notes` |
