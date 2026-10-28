@@ -5,13 +5,36 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
+    name: Validate skills and manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate skills
+      - name: Validate skills, manifests, hooks
         run: python3 scripts/validate_skills.py
+      - name: Hook smoke test
+        run: |
+          set -euo pipefail
+          guard=plugins/fly/scripts/fly_guard.py
+          ask() { printf '%s' "$2" | python3 "$guard" | grep -q '"permissionDecision": "ask"' || { echo "expected ask for: $1"; exit 1; }; }
+          allow() { out=$(printf '%s' "$2" | python3 "$guard"); [ -z "$out" ] || { echo "expected allow for: $1 (got $out)"; exit 1; }; }
+          ask "fly apps destroy"      '{"tool_name":"Bash","tool_input":{"command":"fly apps destroy myapp -y"}}'
+          ask "fly volumes destroy"   '{"tool_name":"Bash","tool_input":{"command":"git status && fly volumes destroy vol_1 -a app"}}'
+          ask "sprite destroy"        '{"tool_name":"Bash","tool_input":{"command":"sprite destroy -s dev --force"}}'
+          ask "mcp delete_app"        '{"tool_name":"mcp__plugin_fly_fly__delete_app","tool_input":{}}'
+          ask "mcp checkpoint_restore" '{"tool_name":"mcp__plugin_fly_fly__checkpoint_restore","tool_input":{}}'
+          allow "fly status"          '{"tool_name":"Bash","tool_input":{"command":"fly status -a app --json"}}'
+          allow "fly deploy"          '{"tool_name":"Bash","tool_input":{"command":"fly deploy"}}'
+          allow "mcp list_apps"       '{"tool_name":"mcp__plugin_fly_fly__list_apps","tool_input":{}}'
+          allow "other server"        '{"tool_name":"mcp__other__delete_app","tool_input":{}}'
+          # the hook must never echo argument values
+          out=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"fly secrets set TOKEN=hunter2 -a app"}}' | python3 "$guard")
+          echo "$out" | grep -q hunter2 && { echo "hook leaked a secret value"; exit 1; } || true
+          echo "hook smoke test passed"

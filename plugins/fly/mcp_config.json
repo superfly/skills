@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp": {
+      "serverUrl": "https://mcp.fly.io"
+    }
+  }
+}

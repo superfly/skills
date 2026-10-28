@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fly",
+  "displayName": "Fly",
+  "version": "1.0.0",
+  "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Claude Code. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
+  "author": {
+    "name": "Fly.io",
+    "email": "support@fly.io",
+    "url": "https://fly.io"
+  },
+  "homepage": "https://fly.io/docs",
+  "repository": "https://github.com/superfly/skills",
+  "license": "MIT",
+  "privacyPolicyUrl": "https://fly.io/legal/privacy-policy/",
+  "keywords": [
+    "fly",
+    "fly-io",
+    "flyctl",
+    "deployment",
+    "machines",
+    "volumes",
+    "postgres",
+    "sprites",
+    "mcp",
+    "agent-skills"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "fly",
+  "displayName": "Fly",
+  "version": "1.0.0",
+  "description": "Launch, deploy, configure, scale, and troubleshoot apps, databases, and infrastructure on Fly.io from Antigravity with the Fly agent skill and hosted MCP server.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Deploy this app to Fly.io",
+    "Check the status of my Fly app",
+    "Debug my latest failed Fly deploy"
+  ],
+  "category": "Cloud",
+  "keywords": [
+    "fly",
+    "fly-io",
+    "deployment",
+    "hosting",
+    "infrastructure",
+    "postgres",
+    "sprites",
+    "mcp",
+    "agent-skills"
+  ],
+  "author": {
+    "name": "Fly.io",
+    "email": "support@fly.io",
+    "url": "https://fly.io"
+  },
+  "homepage": "https://fly.io/docs",
+  "repository": "https://github.com/superfly/skills",
+  "license": "MIT",
+  "skills": ["./skills"],
+  "mcpServers": "./mcp_config.json"
+}

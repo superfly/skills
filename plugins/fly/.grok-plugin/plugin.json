@@ -1,0 +1,24 @@
+{
+  "name": "fly",
+  "version": "1.0.0",
+  "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Grok. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
+  "author": {
+    "name": "Fly.io",
+    "email": "support@fly.io"
+  },
+  "homepage": "https://fly.io/docs",
+  "repository": "https://github.com/superfly/skills",
+  "license": "MIT",
+  "mcpServers": "./.grok-plugin/mcp.json",
+  "keywords": [
+    "fly",
+    "fly-io",
+    "deployment",
+    "hosting",
+    "infrastructure",
+    "postgres",
+    "sprites",
+    "mcp",
+    "agent-skills"
+  ]
+}

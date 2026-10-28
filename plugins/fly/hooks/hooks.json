@@ -1,0 +1,27 @@
+{
+  "description": "Ask before destructive, disruptive, or billable Fly operations",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__plugin_fly_fly__.*$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/fly_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/fly_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
