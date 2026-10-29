@@ -14,10 +14,9 @@ description: >
   login) or when the user asks to be signed up or onboarded.
 license: MIT
 compatibility: Uses the fly CLI (flyctl), the hosted Fly MCP server at https://mcp.fly.io when the client has it connected, and the sprite / sprite-env CLIs for Sprites.
-allowed-tools: Bash(fly:*) Bash(flyctl:*) Bash(sprite:*) Bash(sprite-env:*) Bash(which:*) Bash(command:*) Bash(test:*) Bash(curl:*)
 metadata:
   author: Fly.io
-  version: "1.0.0"
+  version: "1.0.1"
   homepage: https://fly.io/docs
 ---
 

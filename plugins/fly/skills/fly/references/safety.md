@@ -78,6 +78,10 @@ sprite and again when the user says something works.
 
 ## Hooks are a reminder, not a boundary
 
+The skill does not pre-approve shell commands: the client's normal permission
+policy applies to both standalone skill installs and plugin installs. Installing
+only the skill with `npx skills add` does not install the plugin's hook.
+
 The Claude Code plugin hook asks before the operations above (both MCP tools
 and `fly`/`sprite` shell commands) and before Sprite exec commands that
 warrant a checkpoint. It is pattern matching: equivalent shell programs can

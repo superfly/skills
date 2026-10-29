@@ -1,7 +1,7 @@
 {
   "name": "fly",
   "displayName": "Fly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Launch, deploy, configure, scale, and troubleshoot apps, databases, and infrastructure on Fly.io from Antigravity with the Fly agent skill and hosted MCP server.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [

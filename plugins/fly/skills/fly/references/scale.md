@@ -15,7 +15,7 @@ count per region is the baseline the user will ask you about afterwards.
 ```bash
 fly scale count 3 -a <app>                          # total for the default group, spread over current regions
 fly scale count web=4 worker=2 -a <app>             # per process group
-fly scale count 2 --region ord,ams -a <app>         # per region (count is per region here)
+fly scale count 4 --region ord,ams --max-per-region 2 -a <app> # four total, two in each region
 fly scale count 1 --process-group worker --region syd -a <app>
 fly scale count 2 --region syd -a <app>             # add a region: scale up there from zero
 fly scale count 11 --max-per-region 5 -a <app>      # rebalance
@@ -27,6 +27,8 @@ fly scale count 2 --from-snapshot last -a <app>     # new volumes restored from 
 
 Behaviour that surprises people:
 
+- With `--region`, the count is the total across the selected regions, not
+  the count in each. Use `--max-per-region` to cap each region when balancing.
 - Scaling up **clones an existing Machine**. From zero there is nothing to
   clone, so `fly scale count` cannot scale up; run `fly deploy` to seed
   Machines again.
@@ -116,4 +118,5 @@ fly machine list -a <app> --json | jq '.[] | {id, region, state, "size": .config
 
 Report the before and after count per region and size per group.
 
-Checked against flyctl v0.4.123 and docs.fly.io/apps/scale-count on 2026-10-28.
+Checked against flyctl v0.4.123 and docs.fly.io/apps/scale-count on 2026-10-28;
+multi-region count example rechecked against flyctl v0.5.0 source on 2026-10-29.

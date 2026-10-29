@@ -13,8 +13,8 @@ Two surfaces are covered:
   Postgres writes and query-text reads, Sprite destruction, checkpoint
   restores, network-policy replacement, HTTP exposure, and risky Sprite exec.
 - `Bash` calls that run `fly`/`flyctl` or `sprite` destructive subcommands.
-  The skill pre-approves `Bash(fly:*)`, so without this hook `fly apps
-  destroy` would run with no prompt.
+  The skill leaves the client's normal permission policy in place; this hook
+  adds operation-specific confirmation when installed as part of the plugin.
 
 The hook is a reminder, not a sandbox. Equivalent shell programs can evade
 pattern matching, and other hosts do not run it; the skill must still reason
@@ -182,15 +182,11 @@ CHECKPOINT_COMMANDS = (
 # Each entry is a tuple of leading words to match against the parsed argv.
 FLYCTL_DESTRUCTIVE = (
     (("apps", "destroy"), "destroys the app and every Machine, volume, IP and certificate it owns"),
-    (("apps", "delete"), "destroys the app and every Machine, volume, IP and certificate it owns"),
-    (("apps", "remove"), "destroys the app and every Machine, volume, IP and certificate it owns"),
-    (("apps", "rm"), "destroys the app and every Machine, volume, IP and certificate it owns"),
     (("apps", "move"), "moves the app to another organization, which changes billing and access"),
     (("destroy",), "destroys the app and every Machine, volume, IP and certificate it owns"),
     (("machine", "destroy"), "destroys the Machine and its root filesystem"),
-    (("machine", "remove"), "destroys the Machine and its root filesystem"),
-    (("machine", "rm"), "destroys the Machine and its root filesystem"),
-    (("machines", "destroy"), "destroys the Machine and its root filesystem"),
+    (("machine", "exec"), "runs a command on a Machine that can read or change application data"),
+    (("ssh", "console"), "opens a shell or runs a command on a Machine that can read or change application data"),
     (("machine", "kill"), "sends SIGKILL to the Machine, interrupting work without cleanup"),
     (("machine", "stop"), "stops the Machine and interrupts its work"),
     (("machine", "suspend"), "suspends the Machine and interrupts its work"),
@@ -198,9 +194,6 @@ FLYCTL_DESTRUCTIVE = (
     (("machine", "update"), "rewrites the Machine configuration and restarts it"),
     (("machine", "cordon"), "removes the Machine from proxy routing"),
     (("volumes", "destroy"), "destroys the volume and all data on it"),
-    (("volumes", "delete"), "destroys the volume and all data on it"),
-    (("volumes", "rm"), "destroys the volume and all data on it"),
-    (("volume", "destroy"), "destroys the volume and all data on it"),
     (("volumes", "extend"), "grows the volume and its charges; volumes cannot shrink"),
     (("volumes", "create"), "creates billable storage"),
     (("secrets", "unset"), "deletes secrets and redeploys the app"),
@@ -210,8 +203,6 @@ FLYCTL_DESTRUCTIVE = (
     (("scale", "vm"), "resizes every Machine in the group and restarts them"),
     (("scale", "memory"), "resizes every Machine in the group and restarts them"),
     (("mpg", "destroy"), "destroys the Managed Postgres cluster and all its data"),
-    (("mpg", "delete"), "destroys the Managed Postgres cluster and all its data"),
-    (("mpg", "rm"), "destroys the Managed Postgres cluster and all its data"),
     (("mpg", "create"), "creates a billable Managed Postgres cluster"),
     (("mpg", "fork"), "creates a billable Managed Postgres cluster"),
     (("mpg", "restore"), "creates a billable Managed Postgres cluster from a backup"),
@@ -238,6 +229,37 @@ FLYCTL_DESTRUCTIVE = (
     (("image", "update"), "updates the image and performs a rolling restart"),
     (("extensions",), "provisions or changes a billable third-party extension"),
 )
+
+# Canonicalize command words, never arguments. Checked against flyctl v0.5.0.
+FLYCTL_GROUP_ALIASES = {
+    "app": "apps",
+    "machines": "machine", "m": "machine",
+    "volume": "volumes", "vol": "volumes", "v": "volumes",
+    "pg": "postgres",
+    "tigris": "storage",
+    "ip": "ips",
+    "wg": "wireguard",
+    "img": "image",
+    "ext": "extensions",
+}
+FLYCTL_SUBCOMMAND_ALIASES = {
+    "apps": {"delete": "destroy", "remove": "destroy", "rm": "destroy"},
+    "machine": {"remove": "destroy", "rm": "destroy"},
+    "volumes": {"delete": "destroy", "rm": "destroy"},
+    "mpg": {"delete": "destroy", "remove": "destroy", "rm": "destroy"},
+    "certs": {"delete": "remove"},
+}
+
+
+def normalize_flyctl_words(words: list[str]) -> list[str]:
+    words = words.copy()
+    if words:
+        words[0] = FLYCTL_GROUP_ALIASES.get(words[0], words[0])
+    if len(words) > 1:
+        aliases = FLYCTL_SUBCOMMAND_ALIASES.get(words[0], {})
+        words[1] = aliases.get(words[1], words[1])
+    return words
+
 
 SPRITE_DESTRUCTIVE = (
     (("destroy",), "destroys the Sprite, its filesystem, services, checkpoints and URL"),
@@ -351,27 +373,52 @@ def guard_mcp(tool_name: str, tool_input: dict[str, Any]) -> int:
 
 
 def split_pipeline(command: str) -> list[list[str]]:
-    """Split a shell command line into simple commands on ; && || | and newlines."""
-    try:
-        tokens = shlex.split(command, posix=True)
-    except ValueError:
-        tokens = command.split()
-    pipelines: list[list[str]] = [[]]
-    for token in tokens:
-        if token in (";", "&&", "||", "|", "&"):
-            pipelines.append([])
+    """Split simple shell commands before shlex discards quoting and newlines.
+
+    This is intentionally not a shell interpreter. Preserve quoted separators,
+    escaped characters, line continuations and comments in ordinary Bash calls.
+    """
+    segments: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    i = 0
+    while i < len(command):
+        char = command[i]
+        if char == "\\" and quote != "'" and i + 1 < len(command):
+            # Bash removes escaped newlines before tokenization.
+            if command[i + 1] != "\n":
+                current.extend(command[i:i + 2])
+            i += 2
             continue
-        # shlex keeps `a;b` together; split the common joined forms too.
-        parts = re.split(r"(;|&&|\|\||\|)", token)
-        if len(parts) > 1:
-            for part in parts:
-                if part in (";", "&&", "||", "|"):
-                    pipelines.append([])
-                elif part:
-                    pipelines[-1].append(part)
+        if quote:
+            current.append(char)
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+            current.append(char)
+        elif char == "#" and (not current or current[-1].isspace()):
+            # Leave the newline to be processed as a command boundary.
+            newline = command.find("\n", i)
+            i = newline if newline != -1 else len(command)
             continue
-        pipelines[-1].append(token)
-    return [p for p in pipelines if p]
+        elif char in ";&|\n":
+            segments.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+        i += 1
+    segments.append("".join(current))
+
+    pipelines: list[list[str]] = []
+    for segment in segments:
+        try:
+            argv = shlex.split(segment, posix=True)
+        except ValueError:
+            argv = segment.split()
+        if argv:
+            pipelines.append(argv)
+    return pipelines
 
 
 def strip_env_prefix(argv: list[str]) -> list[str]:
@@ -425,7 +472,7 @@ def guard_bash(tool_input: dict[str, Any]) -> int:
             continue
         program = argv[0].rsplit("/", 1)[-1]
         if program in ("fly", "flyctl"):
-            words = words_after(argv[1:], FLY_FLAGS_WITH_VALUES)
+            words = normalize_flyctl_words(words_after(argv[1:], FLY_FLAGS_WITH_VALUES))
             hit = match_table(words, FLYCTL_DESTRUCTIVE)
             if hit:
                 path, effect = hit
