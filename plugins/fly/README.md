@@ -67,8 +67,11 @@ stopped or deleted just to prove the connection works.
   from stdin and asks for confirmation before destructive, disruptive or
   billable operations, both MCP tools and `fly`/`sprite` shell commands. It
   runs no commands, reads no workspace files, makes no network requests and
-  never repeats command arguments. It needs Python 3. It is a reminder, not a
-  sandbox; server-side authorization and the MCP grant are the boundary.
+  never repeats command arguments. If `python3` is missing from `PATH`, the
+  hook skips inspection and emits a warning; normal client permissions still
+  apply. A missing guard script or an unexpected guard error still blocks the
+  call. It is a reminder, not a sandbox; server-side authorization and the MCP
+  grant are the boundary.
 
 See [safety](skills/fly/references/safety.md), the
 [Fly MCP guide](https://mcp.fly.io/guide.md), the

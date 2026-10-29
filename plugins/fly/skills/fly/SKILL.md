@@ -16,7 +16,7 @@ license: MIT
 compatibility: Uses the fly CLI (flyctl), the hosted Fly MCP server at https://mcp.fly.io when the client has it connected, and the sprite / sprite-env CLIs for Sprites.
 metadata:
   author: Fly.io
-  version: "1.0.2"
+  version: "1.0.3"
   homepage: https://fly.io/docs
 ---
 

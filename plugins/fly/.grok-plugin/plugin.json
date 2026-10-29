@@ -1,6 +1,6 @@
 {
   "name": "fly",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Grok. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
   "author": {
     "name": "Fly.io",

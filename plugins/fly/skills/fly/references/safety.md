@@ -89,13 +89,21 @@ warrant a checkpoint. It inspects supported `env`, `timeout`, `command`,
 script files, dynamic shell commands, and excessive nesting require
 confirmation instead of being treated as safe.
 
-Malformed input, parsing failures, and runtime errors block the call with
-exit code 2 and a generic message that omits arguments. The hook launcher also
-blocks if Python or the guard script cannot start. Claude Code v2.1.295 and
-later additionally use `onFailure: "block"` to block host-level failures,
+If `python3` is missing from `PATH`, the launcher skips inspection, exits
+successfully, and emits a `systemMessage` warning to install Python 3. It adds
+no confirmation or permission decision; the client's normal permissions still
+apply. The warning never includes command arguments.
+
+Malformed input, parsing failures, and runtime errors still block the call
+with exit code 2 and a generic message that omits arguments. The hook launcher
+also blocks if a discovered Python interpreter fails or the guard script is
+missing or cannot start. Claude Code v2.1.295 and later additionally use
+`onFailure: "block"` to block host-level failures,
 invalid hook output, and timeouts; other hosts must support that setting to
 provide the same timeout behavior. Repair a failed hook before retrying.
 
 The hook is still pattern matching, not a shell sandbox: arbitrary programs
 can invoke Fly indirectly, and other hosts may not run the hook. Server-side
 authorization, the MCP grant and this skill's reasoning bound the work.
+
+Checked against: the plugin hook launcher and guard tests, 2026-10-29.
