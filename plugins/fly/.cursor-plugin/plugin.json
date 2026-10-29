@@ -1,0 +1,30 @@
+{
+  "name": "fly",
+  "displayName": "Fly",
+  "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Cursor. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
+  "version": "1.0.2",
+  "author": {
+    "name": "Fly.io",
+    "email": "support@fly.io"
+  },
+  "publisher": "Fly.io",
+  "homepage": "https://fly.io/docs",
+  "repository": "https://github.com/superfly/skills",
+  "license": "MIT",
+  "keywords": [
+    "fly",
+    "fly-io",
+    "deployment",
+    "infrastructure",
+    "mcp",
+    "agent-skills"
+  ],
+  "category": "Deployment",
+  "tags": [
+    "mcp",
+    "skills",
+    "fly"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.cursor-plugin/mcp.json"
+}

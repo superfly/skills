@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "fly-skills",
+  "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Claude Code.",
+  "owner": {
+    "name": "Fly.io",
+    "email": "support@fly.io"
+  },
+  "plugins": [
+    {
+      "name": "fly",
+      "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Claude Code. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
+      "author": {
+        "name": "Fly.io"
+      },
+      "source": "./plugins/fly",
+      "category": "deployment",
+      "homepage": "https://fly.io/docs"
+    }
+  ]
+}

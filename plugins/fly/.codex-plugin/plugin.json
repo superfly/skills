@@ -1,0 +1,50 @@
+{
+  "name": "fly",
+  "version": "1.0.2",
+  "description": "Launch, deploy, configure, scale, and troubleshoot apps on Fly.io from Codex using the Fly skill and the hosted Fly MCP server.",
+  "author": {
+    "name": "Fly.io",
+    "email": "support@fly.io",
+    "url": "https://fly.io"
+  },
+  "homepage": "https://fly.io/docs",
+  "repository": "https://github.com/superfly/skills",
+  "license": "MIT",
+  "keywords": [
+    "fly",
+    "fly-io",
+    "flyctl",
+    "deployment",
+    "hosting",
+    "infrastructure",
+    "postgres",
+    "sprites",
+    "mcp",
+    "agent-skills"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Fly.io",
+    "shortDescription": "Launch, deploy, scale, and troubleshoot Fly.io apps.",
+    "longDescription": "Use Fly.io from Codex through the hosted Fly MCP server and the Fly agent skill. Launch and deploy apps, edit fly.toml, scale Machines across regions, manage volumes, secrets, IP addresses and certificates, provision Managed Postgres and object storage, read logs and status, troubleshoot failed deploys, and run builds and tests in Sprites.",
+    "developerName": "Fly.io",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://fly.io",
+    "privacyPolicyURL": "https://fly.io/legal/privacy-policy/",
+    "termsOfServiceURL": "https://fly.io/legal/terms-of-service/",
+    "defaultPrompt": [
+      "Check the status of my Fly app.",
+      "Deploy this app to Fly.io.",
+      "Debug the latest failed Fly deploy."
+    ],
+    "brandColor": "#7B3FE4",
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg",
+    "screenshots": []
+  }
+}
