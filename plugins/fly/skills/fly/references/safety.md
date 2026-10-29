@@ -89,18 +89,21 @@ warrant a checkpoint. It inspects supported `env`, `timeout`, `command`,
 script files, dynamic shell commands, and excessive nesting require
 confirmation instead of being treated as safe.
 
-If `python3` is missing from `PATH`, the launcher skips inspection, exits
-successfully, and emits a `systemMessage` warning to install Python 3. It adds
-no confirmation or permission decision; the client's normal permissions still
-apply. The warning never includes command arguments.
+If `python3` is missing from `PATH` or cannot run (for example the Windows
+Store `python3` alias stub that only offers to install Python), the launcher
+skips inspection, exits successfully, and emits a `systemMessage` warning to
+install Python 3. It adds no confirmation or permission decision; the client's
+normal permissions still apply. The warning never includes command arguments.
+The launcher only probes the interpreter after the guard fails, so a working
+install pays no extra startup cost.
 
 Malformed input, parsing failures, and runtime errors still block the call
 with exit code 2 and a generic message that omits arguments. The hook launcher
-also blocks if a discovered Python interpreter fails or the guard script is
-missing or cannot start. Claude Code v2.1.295 and later additionally use
-`onFailure: "block"` to block host-level failures,
-invalid hook output, and timeouts; other hosts must support that setting to
-provide the same timeout behavior. Repair a failed hook before retrying.
+also blocks when Python runs but the guard script is missing or cannot start.
+Claude Code v2.1.295 and later additionally use `onFailure: "block"` to block
+host-level failures, invalid hook output, and timeouts; other hosts must
+support that setting to provide the same timeout behavior. Repair a failed
+hook before retrying.
 
 The hook is still pattern matching, not a shell sandbox: arbitrary programs
 can invoke Fly indirectly, and other hosts may not run the hook. Server-side

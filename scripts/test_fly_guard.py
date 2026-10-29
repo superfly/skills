@@ -224,20 +224,13 @@ class FlyGuardTests(unittest.TestCase):
             broken_root = Path(missing_root) / "broken"
             (broken_root / "scripts").mkdir(parents=True)
             (broken_root / "scripts/fly_guard.py").write_text('raise RuntimeError("review-only-marker")\n')
-            broken_python = Path(missing_root) / "bin"
-            broken_python.mkdir()
-            interpreter = broken_python / "python3"
-            interpreter.write_text('#!/bin/sh\nprintf "%s\\n" "review-only-marker" >&2\nexit 127\n')
-            interpreter.chmod(0o755)
             for entry in hooks["hooks"]["PreToolUse"]:
                 hook = entry["hooks"][0]
                 self.assertEqual(hook["onFailure"], "block")
-                for scenario in ("success", "broken_python", "missing_script", "malformed_input", "script_error"):
+                for scenario in ("success", "missing_script", "malformed_input", "script_error"):
                     with self.subTest(matcher=entry["matcher"], scenario=scenario):
                         env = dict(os.environ, CLAUDE_PLUGIN_ROOT=str(GUARD_PATH.parent.parent))
                         env.pop("GROK_PLUGIN_ROOT", None)
-                        if scenario == "broken_python":
-                            env["PATH"] = str(broken_python)
                         if scenario == "missing_script":
                             env["CLAUDE_PLUGIN_ROOT"] = missing_root
                         if scenario == "script_error":
@@ -253,33 +246,67 @@ class FlyGuardTests(unittest.TestCase):
                         if scenario != "success":
                             self.assertIn("Fly guard failed", result.stderr)
 
-    def test_missing_python_warns_without_overriding_permissions(self):
+    def test_unusable_python_warns_without_overriding_permissions(self):
         hooks = json.loads((GUARD_PATH.parent.parent / "hooks/hooks.json").read_text())
         payloads = (
             {"tool_name": "Bash", "tool_input": {"command": "printf review-only-marker"}},
             {"tool_name": "Bash", "tool_input": {"command": "fly apps destroy review-only-marker"}},
             {"tool_name": "mcp__plugin_fly_fly__delete_volume", "tool_input": {"volume_id": "review-only-marker"}},
         )
-        with tempfile.TemporaryDirectory() as empty_path:
+        with tempfile.TemporaryDirectory() as tmp:
+            # No python3 on PATH at all.
+            empty_path = Path(tmp) / "empty"
+            empty_path.mkdir()
+            # A python3 that exists but cannot run anything, like the Windows
+            # Store alias stub that only offers to install Python.
+            stub_path = Path(tmp) / "stub"
+            stub_path.mkdir()
+            stub = stub_path / "python3"
+            stub.write_text('#!/bin/sh\nprintf "%s\\n" "Python was not found review-only-marker" >&2\nexit 9009\n')
+            stub.chmod(0o755)
             for entry in hooks["hooks"]["PreToolUse"]:
                 for root_variable in ("CLAUDE_PLUGIN_ROOT", "GROK_PLUGIN_ROOT"):
-                    for payload in payloads:
-                        with self.subTest(matcher=entry["matcher"], root=root_variable, payload=payload):
-                            env = dict(os.environ, PATH=empty_path)
-                            env.pop("CLAUDE_PLUGIN_ROOT", None)
-                            env.pop("GROK_PLUGIN_ROOT", None)
-                            env[root_variable] = str(GUARD_PATH.parent.parent)
-                            result = subprocess.run(
-                                ["/bin/sh", "-c", entry["hooks"][0]["command"]], env=env,
-                                input=json.dumps(payload), capture_output=True, text=True,
-                            )
-                            self.assertEqual(result.returncode, 0)
-                            self.assertEqual(result.stderr, "")
-                            output = json.loads(result.stdout)
-                            self.assertEqual(set(output), {"systemMessage"})
-                            self.assertIn("python3 was not found", output["systemMessage"])
-                            self.assertIn("Normal client permissions still apply", output["systemMessage"])
-                            self.assertNotIn("review-only-marker", result.stdout)
+                    for search_path in (empty_path, stub_path):
+                        for payload in payloads:
+                            with self.subTest(matcher=entry["matcher"], root=root_variable,
+                                              python=search_path.name, payload=payload):
+                                env = dict(os.environ, PATH=str(search_path))
+                                env.pop("CLAUDE_PLUGIN_ROOT", None)
+                                env.pop("GROK_PLUGIN_ROOT", None)
+                                env[root_variable] = str(GUARD_PATH.parent.parent)
+                                result = subprocess.run(
+                                    ["/bin/sh", "-c", entry["hooks"][0]["command"]], env=env,
+                                    input=json.dumps(payload), capture_output=True, text=True,
+                                )
+                                self.assertEqual(result.returncode, 0)
+                                self.assertEqual(result.stderr, "")
+                                output = json.loads(result.stdout)
+                                self.assertEqual(set(output), {"systemMessage"})
+                                self.assertIn("python3 was not found on PATH or cannot run", output["systemMessage"])
+                                self.assertIn("Normal client permissions still apply", output["systemMessage"])
+                                self.assertNotIn("review-only-marker", result.stdout)
+
+    def test_working_python_with_failing_guard_still_blocks(self):
+        # A usable interpreter must not be mistaken for a missing one when the
+        # guard itself fails: the launcher probes python3 only after a failure.
+        hooks = json.loads((GUARD_PATH.parent.parent / "hooks/hooks.json").read_text())
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "fly status"}})
+        with tempfile.TemporaryDirectory() as tmp:
+            broken_root = Path(tmp) / "broken"
+            (broken_root / "scripts").mkdir(parents=True)
+            (broken_root / "scripts/fly_guard.py").write_text('raise RuntimeError("review-only-marker")\n')
+            for entry in hooks["hooks"]["PreToolUse"]:
+                with self.subTest(matcher=entry["matcher"]):
+                    env = dict(os.environ, CLAUDE_PLUGIN_ROOT=str(broken_root))
+                    env.pop("GROK_PLUGIN_ROOT", None)
+                    result = subprocess.run(
+                        ["/bin/sh", "-c", entry["hooks"][0]["command"]], env=env,
+                        input=payload, capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 2)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn("Fly guard failed", result.stderr)
+                    self.assertNotIn("review-only-marker", result.stderr)
 
 
 if __name__ == "__main__":
