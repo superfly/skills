@@ -84,6 +84,18 @@ only the skill with `npx skills add` does not install the plugin's hook.
 
 The Claude Code plugin hook asks before the operations above (both MCP tools
 and `fly`/`sprite` shell commands) and before Sprite exec commands that
-warrant a checkpoint. It is pattern matching: equivalent shell programs can
-evade it, and other hosts do not run it. Server-side authorization, the MCP
-grant and this skill's reasoning are what actually bound the work.
+warrant a checkpoint. It inspects supported `env`, `timeout`, `command`,
+`exec`, and shell `-c` wrappers recursively. Unsupported wrapper options,
+script files, dynamic shell commands, and excessive nesting require
+confirmation instead of being treated as safe.
+
+Malformed input, parsing failures, and runtime errors block the call with
+exit code 2 and a generic message that omits arguments. The hook launcher also
+blocks if Python or the guard script cannot start. Claude Code v2.1.295 and
+later additionally use `onFailure: "block"` to block host-level failures,
+invalid hook output, and timeouts; other hosts must support that setting to
+provide the same timeout behavior. Repair a failed hook before retrying.
+
+The hook is still pattern matching, not a shell sandbox: arbitrary programs
+can invoke Fly indirectly, and other hosts may not run the hook. Server-side
+authorization, the MCP grant and this skill's reasoning bound the work.

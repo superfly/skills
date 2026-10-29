@@ -1,6 +1,6 @@
 {
   "name": "fly",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Launch, deploy, configure, scale, and troubleshoot apps on Fly.io from Codex using the Fly skill and the hosted Fly MCP server.",
   "author": {
     "name": "Fly.io",

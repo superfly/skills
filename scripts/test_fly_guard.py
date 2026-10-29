@@ -3,6 +3,9 @@
 import importlib.util
 import io
 import json
+import os
+import subprocess
+import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
 import unittest
@@ -141,6 +144,109 @@ class FlyGuardTests(unittest.TestCase):
         self.assert_asks(output)
         self.assertNotIn(marker, output)
         self.assertNotIn("review-app", output)
+
+    def test_nested_wrappers(self):
+        for command in (
+            "bash -c 'fly apps destroy review-app -y'",
+            "bash -c \"sh -c 'fly apps destroy review-app -y'\"",
+            "/bin/bash -lc 'fly volumes destroy review-volume -a review-app'",
+            "sh -ec 'fly status; fly machines stop machine-id -a review-app'",
+            "timeout 30 fly apps destroy review-app -y",
+            "timeout --signal TERM --kill-after=2s 30s fly apps destroy review-app -y",
+            "gtimeout -sTERM -k2 30 fly apps destroy review-app -y",
+            "env DISPLAY_LABEL=review fly apps destroy review-app -y",
+            "/usr/bin/env -i -u DISPLAY_LABEL -- env DISPLAY_LABEL=review fly app rm review-app -y",
+            "env --chdir=/tmp timeout --foreground 1m bash -lc 'sprite destroy -s review --force'",
+            "command -p env DISPLAY_LABEL=review exec -a cli fly apps destroy review-app -y",
+        ):
+            with self.subTest(command=command):
+                output = self.bash_output(command)
+                self.assert_asks(output)
+                self.assertNotIn("review-app", output)
+
+    def test_safe_wrapped_reads(self):
+        for command in (
+            "bash -c 'fly status -a review-app'",
+            "timeout -k 2 30 env DISPLAY_LABEL=review fly volumes list -a review-app",
+            "env -u DISPLAY_LABEL -- command -p fly machines list -a review-app",
+            "command -v fly",
+            "printf '%s' \"bash -c 'fly apps destroy review-app -y'\"",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(self.bash_output(command), "")
+
+    def test_unresolved_wrappers_require_confirmation(self):
+        for command in (
+            "env -S 'fly apps destroy review-app -y'",
+            "env --unknown fly apps destroy review-app -y",
+            "timeout --unknown 30 fly apps destroy review-app -y",
+            "timeout '$DURATION' fly apps destroy review-app -y",
+            "bash review-script.sh",
+            "bash -c",
+            "bash --rcfile review-script.sh -c 'fly status'",
+            "bash -c '$1 apps destroy review-app -y' _ fly",
+            "bash -c 'if true; then fly apps destroy review-app -y; fi'",
+            "bash -c 'f() { fly apps destroy review-app -y; }; f'",
+            "sudo -u root fly apps destroy review-app -y",
+            "env " * 20 + "fly status",
+        ):
+            with self.subTest(command=command):
+                self.assert_asks(self.bash_output(command))
+
+    def test_invalid_input_blocks_without_echoing_it(self):
+        for payload in (
+            "", "invalid review-only-marker", "[]", "{}",
+            json.dumps({"tool_name": "Bash", "tool_input": []}),
+            json.dumps({"tool_name": "Bash", "tool_input": {}}),
+            json.dumps({"tool_name": "Bash", "tool_input": {"command": 1}}),
+            json.dumps({"tool_name": "Bash", "tool_input": {"command": "fly 'review-only-marker"}}),
+        ):
+            with self.subTest(payload=payload):
+                output, errors = io.StringIO(), io.StringIO()
+                with patch("sys.stdin", io.StringIO(payload)), redirect_stdout(output), patch("sys.stderr", errors):
+                    self.assertEqual(guard.main(), 2)
+                self.assertEqual(output.getvalue(), "")
+                self.assertIn("Fly guard failed", errors.getvalue())
+                self.assertNotIn("review-only-marker", errors.getvalue())
+
+    def test_unexpected_guard_error_blocks(self):
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "fly status"}})
+        errors = io.StringIO()
+        with patch("sys.stdin", io.StringIO(payload)), patch("sys.stderr", errors), \
+                patch.object(guard, "guard_bash", side_effect=RuntimeError("review-only-marker")):
+            self.assertEqual(guard.main(), 2)
+        self.assertNotIn("review-only-marker", errors.getvalue())
+
+    def test_hook_launcher_success_and_failures(self):
+        hooks = json.loads((GUARD_PATH.parent.parent / "hooks/hooks.json").read_text())
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "fly status"}})
+        with tempfile.TemporaryDirectory() as missing_root:
+            broken_root = Path(missing_root) / "broken"
+            (broken_root / "scripts").mkdir(parents=True)
+            (broken_root / "scripts/fly_guard.py").write_text('raise RuntimeError("review-only-marker")\n')
+            for entry in hooks["hooks"]["PreToolUse"]:
+                hook = entry["hooks"][0]
+                self.assertEqual(hook["onFailure"], "block")
+                for scenario in ("success", "missing_python", "missing_script", "malformed_input", "script_error"):
+                    with self.subTest(matcher=entry["matcher"], scenario=scenario):
+                        env = dict(os.environ, CLAUDE_PLUGIN_ROOT=str(GUARD_PATH.parent.parent))
+                        env.pop("GROK_PLUGIN_ROOT", None)
+                        if scenario == "missing_python":
+                            env["PATH"] = missing_root
+                        if scenario == "missing_script":
+                            env["CLAUDE_PLUGIN_ROOT"] = missing_root
+                        if scenario == "script_error":
+                            env["CLAUDE_PLUGIN_ROOT"] = str(broken_root)
+                        result = subprocess.run(
+                            ["/bin/sh", "-c", hook["command"]], env=env,
+                            input="review-only-marker" if scenario == "malformed_input" else payload,
+                            capture_output=True, text=True,
+                        )
+                        self.assertEqual(result.returncode, 0 if scenario == "success" else 2)
+                        self.assertEqual(result.stdout, "")
+                        self.assertNotIn("review-only-marker", result.stderr)
+                        if scenario != "success":
+                            self.assertIn("Fly guard failed", result.stderr)
 
 
 if __name__ == "__main__":

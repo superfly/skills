@@ -282,12 +282,10 @@ SPRITE_ENV_DESTRUCTIVE = (
 
 
 def read_payload() -> dict[str, Any]:
-    try:
-        raw = sys.stdin.read()
-        value = json.loads(raw) if raw.strip() else {}
-        return value if isinstance(value, dict) else {}
-    except json.JSONDecodeError:
-        return {}
+    value = json.load(sys.stdin)
+    if not isinstance(value, dict):
+        raise ValueError("Expected a hook payload")
+    return value
 
 
 def matches(text: str, patterns: tuple[str, ...]) -> bool:
@@ -412,21 +410,99 @@ def split_pipeline(command: str) -> list[list[str]]:
 
     pipelines: list[list[str]] = []
     for segment in segments:
-        try:
-            argv = shlex.split(segment, posix=True)
-        except ValueError:
-            argv = segment.split()
+        argv = shlex.split(segment, posix=True)
         if argv:
             pipelines.append(argv)
     return pipelines
 
 
-def strip_env_prefix(argv: list[str]) -> list[str]:
+def strip_assignments(argv: list[str]) -> list[str]:
     while argv and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", argv[0]):
         argv = argv[1:]
-    if argv and argv[0] in ("env", "sudo", "command", "exec"):
-        argv = argv[1:]
     return argv
+
+
+class NeedsConfirmation(Exception):
+    """A wrapper cannot be inspected without interpreting arbitrary shell code."""
+
+
+def after_options(argv: list[str], switches: set[str], values: set[str]) -> list[str]:
+    """Consume only known wrapper options; unknown syntax requires confirmation."""
+    i = 0
+    while i < len(argv) and argv[i].startswith("-"):
+        option = argv[i]
+        if option == "--":
+            return argv[i + 1:]
+        if option in switches:
+            i += 1
+        elif option in values:
+            if i + 1 >= len(argv):
+                raise NeedsConfirmation
+            i += 2
+        elif any(option.startswith(flag + "=") for flag in values if flag.startswith("--")):
+            i += 1
+        elif any(option.startswith(flag) and len(option) > 2 for flag in values if len(flag) == 2):
+            i += 1
+        else:
+            raise NeedsConfirmation
+    return argv[i:]
+
+
+def wrapped_reason(argv: list[str], depth: int) -> str | None:
+    if depth > 16:
+        raise NeedsConfirmation
+    argv = strip_assignments(argv)
+    if not argv:
+        return None
+    program = argv[0].rsplit("/", 1)[-1]
+    args = argv[1:]
+    if "$" in program or "`" in program:
+        raise NeedsConfirmation
+    if program == "env":
+        args = after_options(args, {"-", "-i", "--ignore-environment", "-v", "--debug"},
+                             {"-u", "--unset", "-C", "--chdir"})
+        return wrapped_reason(strip_assignments(args), depth + 1)
+    if program in ("timeout", "gtimeout"):
+        args = after_options(args, {"--foreground", "--preserve-status", "-v", "--verbose"},
+                             {"-s", "--signal", "-k", "--kill-after"})
+        if not args or not re.fullmatch(r"(?:\d+(?:\.\d*)?|\.\d+)[smhd]?", args[0]):
+            raise NeedsConfirmation
+        if len(args) < 2:
+            raise NeedsConfirmation
+        return wrapped_reason(args[1:], depth + 1)
+    if program == "command":
+        if args and args[0] in ("-v", "-V"):
+            return None  # Lookup only; does not execute the named command.
+        return wrapped_reason(after_options(args, {"-p"}, set()), depth + 1)
+    if program == "exec":
+        return wrapped_reason(after_options(args, {"-c", "-l"}, {"-a"}), depth + 1)
+    if program in ("bash", "sh", "dash", "zsh", "ksh"):
+        i = 0
+        while i < len(args):
+            option = args[i]
+            if option in ("--noprofile", "--norc"):
+                i += 1
+                continue
+            if not re.fullmatch(r"-[cefilnuvx]+", option):
+                raise NeedsConfirmation
+            if "c" in option:
+                if i + 1 >= len(args):
+                    raise NeedsConfirmation
+                script = args[i + 1]
+                # Positional parameters, substitutions and eval need a shell to
+                # resolve. Never execute them in order to make a hook decision.
+                if any(char in script for char in "$`(){}"):
+                    raise NeedsConfirmation
+                return bash_reason(script, depth + 1)
+            i += 1
+        raise NeedsConfirmation  # Script files and stdin are not inspected.
+    if program in (
+        "sudo", "nice", "nohup", "time", "eval", "source", ".", "fish",
+        "if", "then", "elif", "else", "for", "while", "until", "do", "case",
+        "function", "alias", "!", "{", "(",
+    ):
+        raise NeedsConfirmation
+    return direct_reason(argv)
 
 
 def words_after(argv: list[str], skip_flags_with_values: frozenset[str]) -> list[str]:
@@ -462,61 +538,81 @@ def match_table(
     return None
 
 
+def bash_reason(command: str, depth: int = 0) -> str | None:
+    for argv in split_pipeline(command):
+        reason = wrapped_reason(argv, depth)
+        if reason:
+            return reason
+    return None
+
+
+def direct_reason(argv: list[str]) -> str | None:
+    program = argv[0].rsplit("/", 1)[-1]
+    if program in ("fly", "flyctl"):
+        words = normalize_flyctl_words(words_after(argv[1:], FLY_FLAGS_WITH_VALUES))
+        hit = match_table(words, FLYCTL_DESTRUCTIVE)
+        if hit:
+            path, effect = hit
+            return (
+                f"`fly {path}` {effect}. Confirm the exact app, organization and "
+                "resource, and that this is the intended change."
+            )
+    elif program == "sprite":
+        words = words_after(argv[1:], SPRITE_FLAGS_WITH_VALUES)
+        hit = match_table(words, SPRITE_DESTRUCTIVE)
+        if hit:
+            path, effect = hit
+            return f"`sprite {path}` {effect}. Confirm the exact Sprite."
+        if words[:1] == ["exec"] and matches(" ".join(argv), CHECKPOINT_COMMANDS):
+            return (
+                "This command can make broad persistent changes inside the Sprite. "
+                "Create or verify a recent checkpoint before continuing."
+            )
+    elif program == "sprite-env":
+        words = words_after(argv[1:], frozenset())
+        hit = match_table(words, SPRITE_ENV_DESTRUCTIVE)
+        if hit:
+            path, effect = hit
+            return f"`sprite-env {path}` {effect}. Confirm this is intended."
+    return None
+
+
 def guard_bash(tool_input: dict[str, Any]) -> int:
     command = tool_input.get("command")
     if not isinstance(command, str) or not command.strip():
-        return 0
-    for argv in split_pipeline(command):
-        argv = strip_env_prefix(argv)
-        if not argv:
-            continue
-        program = argv[0].rsplit("/", 1)[-1]
-        if program in ("fly", "flyctl"):
-            words = normalize_flyctl_words(words_after(argv[1:], FLY_FLAGS_WITH_VALUES))
-            hit = match_table(words, FLYCTL_DESTRUCTIVE)
-            if hit:
-                path, effect = hit
-                ask(
-                    f"`fly {path}` {effect}. Confirm the exact app, organization and "
-                    "resource, and that this is the intended change."
-                )
-                return 0
-        elif program == "sprite":
-            words = words_after(argv[1:], SPRITE_FLAGS_WITH_VALUES)
-            hit = match_table(words, SPRITE_DESTRUCTIVE)
-            if hit:
-                path, effect = hit
-                ask(f"`sprite {path}` {effect}. Confirm the exact Sprite.")
-                return 0
-            if words[:1] == ["exec"] and matches(command.lower(), CHECKPOINT_COMMANDS):
-                ask(
-                    "This command can make broad persistent changes inside the Sprite. "
-                    "Create or verify a recent checkpoint before continuing."
-                )
-                return 0
-        elif program == "sprite-env":
-            words = words_after(argv[1:], frozenset())
-            hit = match_table(words, SPRITE_ENV_DESTRUCTIVE)
-            if hit:
-                path, effect = hit
-                ask(f"`sprite-env {path}` {effect}. Confirm this is intended.")
-                return 0
+        raise ValueError("Missing Bash command")
+    try:
+        reason = bash_reason(command)
+    except NeedsConfirmation:
+        reason = (
+            "The Fly guard cannot resolve this command wrapper without executing "
+            "shell code. Confirm the actual command and its target before continuing."
+        )
+    if reason:
+        ask(reason)
     return 0
 
 
 def main() -> int:
-    payload = read_payload()
-    tool_name = str(payload.get("tool_name", ""))
-    tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict):
-        tool_input = {}
-
-    if tool_name.startswith(MCP_PREFIX):
+    try:
+        payload = read_payload()
+        tool_name = payload.get("tool_name")
+        if not isinstance(tool_name, str) or not tool_name:
+            raise ValueError("Missing tool name")
+        # Never apply Fly's policy to another server or tool.
+        if tool_name != "Bash" and not tool_name.startswith(MCP_PREFIX):
+            return 0
+        tool_input = payload.get("tool_input")
+        if not isinstance(tool_input, dict):
+            raise ValueError("Missing tool input")
+        if tool_name == "Bash":
+            return guard_bash(tool_input)
         return guard_mcp(tool_name, tool_input)
-    if tool_name == "Bash":
-        return guard_bash(tool_input)
-    # Never apply Fly's policy to another server or tool.
-    return 0
+    except Exception:
+        # Exception messages and tracebacks may contain command arguments.
+        print("Fly guard failed to inspect this call. Repair the guard before retrying.",
+              file=sys.stderr)
+        return 2  # PreToolUse exit 2 blocks the tool call.
 
 
 if __name__ == "__main__":

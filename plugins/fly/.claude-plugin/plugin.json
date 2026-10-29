@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "fly",
   "displayName": "Fly",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Fly.io agent skill and hosted MCP server for launching, deploying, configuring, scaling, and troubleshooting apps on Fly.io from Claude Code. Manage Machines, volumes, secrets, networking, Managed Postgres, object storage, and Sprites.",
   "author": {
     "name": "Fly.io",
