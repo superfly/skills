@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import tempfile
 from contextlib import redirect_stdout
@@ -125,6 +126,15 @@ class FlyGuardTests(unittest.TestCase):
             ("mcp__plugin_fly_fly__delete_app", True),
             ("mcp__plugin_fly_fly__checkpoint_restore", True),
             ("mcp__plugin_fly_fly__list_apps", False),
+            ("mcp__fly__destroy_sprite", True),
+            ("mcp__fly__checkpoint_restore", True),
+            ("mcp__fly__list_sprites", False),
+            ("fly___destroy_sprite", True),
+            ("fly___checkpoint_restore", True),
+            ("fly___list_sprites", False),
+            ("other___destroy_sprite", False),
+            ("fly_other___destroy_sprite", False),
+            ("mcp__fly_other__destroy_sprite", False),
             ("mcp__other__delete_app", False),
         ):
             with self.subTest(tool=tool):
@@ -136,6 +146,47 @@ class FlyGuardTests(unittest.TestCase):
                     self.assert_asks(output.getvalue())
                 else:
                     self.assertEqual(output.getvalue(), "")
+
+    def test_droid_hook_dispatch_and_plugin_root_expansion(self):
+        # Droid 1.1.0 loads Claude-layout hooks and expands CLAUDE_PLUGIN_ROOT
+        # in the command before launching it. Exercise the real matcher,
+        # launcher and stdin dispatch together, without running Fly commands.
+        hooks = json.loads((GUARD_PATH.parent.parent / "hooks/hooks.json").read_text())
+        cases = (
+            ("Execute", {"command": "sprite destroy -s review-sprite"}, True),
+            ("Execute", {"command": "sprite list"}, False),
+            ("mcp__fly__destroy_sprite", {"name": "review-sprite"}, True),
+            ("mcp__fly__list_sprites", {}, False),
+            ("mcp__fly__service_create", {"http_port": 8080}, True),
+            ("fly___destroy_sprite", {"name": "review-sprite"}, True),
+            ("fly___list_sprites", {}, False),
+            ("fly___service_create", {"http_port": 8080}, True),
+        )
+        for tool, params, asks in cases:
+            entries = [entry for entry in hooks["hooks"]["PreToolUse"]
+                       if re.search(entry["matcher"], tool)]
+            self.assertEqual(len(entries), 1, tool)
+            command = entries[0]["hooks"][0]["command"].replace(
+                "${CLAUDE_PLUGIN_ROOT}", str(GUARD_PATH.parent.parent))
+            env = dict(os.environ)
+            env.pop("GROK_PLUGIN_ROOT", None)
+            env["CLAUDE_PLUGIN_ROOT"] = "/PLUGIN_ROOT_NOT_EXPANDED_ERROR"
+            with self.subTest(tool=tool, params=params):
+                result = subprocess.run(
+                    ["/bin/sh", "-c", command], env=env,
+                    input=json.dumps({"tool_name": tool, "tool_input": params}),
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, "")
+                if asks:
+                    self.assert_asks(result.stdout)
+                else:
+                    self.assertEqual(result.stdout, "")
+        for tool in ("mcp__other__destroy_sprite", "mcp__fly_other__destroy_sprite",
+                     "other___destroy_sprite", "fly_other___destroy_sprite", "OtherExecute"):
+            self.assertFalse(any(re.search(entry["matcher"], tool)
+                                 for entry in hooks["hooks"]["PreToolUse"]))
 
     def test_confirmation_omits_arguments(self):
         # A non-sensitive marker checks redaction without a credential fixture.

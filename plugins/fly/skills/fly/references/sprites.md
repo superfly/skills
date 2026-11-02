@@ -67,7 +67,9 @@ Check them before `create_sprite`, pass the required prefix, and never destroy
 someone else's sprite to free a slot. Sprite-scoped tools take `sprite` (name)
 and accept `sprite_id` so a destroyed-and-recreated sprite is rejected; pass
 the ID when you have it. Listing follows continuation tokens; a partial page
-is not the inventory.
+is not the inventory. The visible inventory is not necessarily the counter
+used by the creation limit. Do not infer a creation denial from that count
+alone; honor the server's response to an authorized creation request.
 
 ## Lifecycle
 
@@ -100,7 +102,9 @@ suspend on detach and resume on attach, so output is not lost.
 
 MCP `exec` takes `cmd` as an argv array (`["python3", "-c", "print(1)"]`);
 the string form splits on whitespace and breaks on quoting. It returns
-output but **no exit status**; say so instead of reporting one. If `exec` or
+output but **no structured exit status**; capture the command's status explicitly
+when needed. Some runtimes expose raw stream-framing bytes in this output;
+do not save it directly as a source file or patch. If `exec` or
 a file tool fails with "is not assigned to compute" while `get_sprite_info`
 shows the sprite running, the server cannot route to it yet; report the name
 and ID, do not recreate.
@@ -130,11 +134,14 @@ command in `sprite exec -s <n> --`, or use the MCP tools `service_list`,
 `service_get`, `service_create` (create or update), `service_start`,
 `service_stop`, `service_logs` (bounded).
 
-HTTP exposure: the proxy routes the sprite URL to port 8080 by default, or to
-the one service declaring `--http-port`. Only one service holds an HTTP port.
-A service with one autostarts on the first request, so an idle sprite still
-answers. Get the URL with `sprite-env info` inside or `sprite url -s <n>` (or
-`sprite info`) outside. URL auth modes: `sprite` (org members, the default)
+HTTP exposure varies by runtime: older runtimes use a Sprite-wide HTTP route;
+newer ones return per-service `public_url` and `exposure` fields. Use the URL
+returned by `services get` or `service_get`, not a constructed hostname. A
+field named `public_url` does not mean anonymous access: check `exposure`.
+An idle Sprite may need time after wake before its supervised process is ready;
+use a bounded health-probe retry and verify the actual HTTP status. Get the
+base Sprite URL with `sprite-env info`, `sprite url -s <n>` or `sprite info`.
+Legacy URL auth modes are `sprite` (org members, the default)
 and `public` (the internet). Changing to public is a publication event:
 `sprite url update --auth public -s <n>` (newer builds: `sprite config
 update --url-auth public`); confirm first and say what becomes reachable.
@@ -148,6 +155,13 @@ Workflow: list first, pick a stable role name (`web`, `api`, `worker`,
 streamed logs, verify with `services get` and an HTTP probe, report name,
 state, port, URL and auth mode. When a start fails, read the logs before
 editing the definition.
+
+If MCP `service_create` returns `missing_service_definition`, inspect
+`sprite-env services help` through MCP `exec`. The native guest CLI can create
+the supervised service on runtimes whose service schema the MCP adapter does
+not yet support. Specify `--dir` for the repository and read the service back
+afterward. This fallback uses the same authorized Sprite; it does not bypass a
+permission denial, change URL exposure, or justify detached shell processes.
 
 ## Checkpoints
 
@@ -208,6 +222,18 @@ than writing them to disk; a checkpoint keeps every secret written to the
 filesystem. Verify what landed (`wc -c`, checksum, `du`) and report what you
 copied and skipped.
 
+File capabilities also vary by runtime. If `file_read` explicitly reports that
+the runtime supports writes but not reads, use `exec` in the same authorized
+Sprite. For a file export, encode its bytes as base64, extract only the encoded
+payload, then verify its decoded byte count and SHA-256 against the remote
+file. Fail on a mismatch; do not remove arbitrary bytes from a patch or treat
+an error response as file content.
+
+After uploading a new workspace, inspect `id` and file ownership before Git or
+build commands. `file_write` can create root-owned files and directories while
+`exec` runs as `sprite`. If needed and authorized, correct ownership only on
+the newly created task directory; do not recursively change unrelated paths.
+
 ## Network policy
 
 Outbound traffic is filtered by a DNS-based allow/deny list, which is what
@@ -252,6 +278,39 @@ share the provider's `setup_url` from `available`, then re-list. Unsupported
 provider: offer `custom_api` rather than a raw key on disk. Keep gateway
 responses out of anything the sprite serves over HTTP.
 
+## Remote workspace workflow
+
+When the agent runs outside a Sprite, its built-in shell, editor and Git tools
+still act locally. Keep one explicit remote repository path and use Sprite
+exec and file operations for every remote edit, build and test. Do not fix a
+local file and report remote test results as validation of that change.
+
+1. Discover the authorized organization and Sprite restrictions. Reuse an
+   explicitly selected workspace or create a task-specific Sprite. Record its
+   name, ID and repository path for follow-up sessions.
+2. Clone the repository in the Sprite, or transfer only the task's source
+   files for a local-only fixture. Establish the baseline commit and run the
+   failing test remotely before editing. Follow the file exclusions above.
+3. Checkpoint the baseline, make the remote change, and rerun the same test.
+   Record the command, working directory and result. If an exec response lacks
+   an exit status, capture the test process status explicitly in its output;
+   successful transport alone does not mean the test passed.
+4. Inspect the remote Git diff and save a patch or requested artifacts locally.
+   A local patch is a deliverable, not evidence that the local checkout was
+   changed. Checkpoint the working state and retain its ID.
+5. For a preview, use a supervised service with an explicit working directory
+   and HTTP port. Preserve the existing URL authentication mode, probe the
+   service, and report how the user can access it. Do not change a private URL
+   to public merely to make a probe pass.
+6. In a follow-up session, select the same Sprite identity, inspect the existing
+   repository and service, and rerun a test before continuing. Do not create a
+   replacement Sprite or overwrite the workspace simply because the agent's
+   local working directory is empty.
+
+At handoff, report the Sprite name/ID, repository path and commit, test result,
+patch location, checkpoint IDs, and preview URL/auth mode. Leave retained
+resources explicit; cleanup needs the user's intent.
+
 ## Golden path
 
 1. Detect inside or outside. Choose the control plane once.
@@ -264,4 +323,6 @@ responses out of anything the sprite serves over HTTP.
 7. Report the sprite name, the URL and its auth mode, and any checkpoint IDs.
    A remote result the user cannot locate afterwards is not a finished task.
 
-Checked against sprites.dev CLIs and mcp.fly.io on 2026-10-28.
+Checked against sprites.dev CLIs and mcp.fly.io on 2026-10-28; remote workflow
+verified with Droid 1.1.0, Sprite runtime 0.1.12 and sprite-env 0.1.0 on
+2026-11-02. Runtime compatibility notes above reflect that live test.

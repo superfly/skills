@@ -8,13 +8,14 @@ orchestration skill, `fly`, and the hosted Fly MCP server.
 The shared plugin payload lives in `plugins/fly`.
 
 - Claude Code: `plugins/fly/.claude-plugin/plugin.json`, `plugins/fly/.mcp.json`, and the repo marketplace at `.claude-plugin/marketplace.json`.
+- Factory Droid: imports the same Claude Code layout, translating `.claude-plugin` and `.mcp.json` in its cache. The shared hook also matches `Execute` and `fly___*` (and the documented `mcp__fly__*` form).
 - OpenAI Codex: `plugins/fly/.codex-plugin/plugin.json`, `plugins/fly/.mcp.json`, and the repo marketplace at `.agents/plugins/marketplace.json`.
 - Grok Build / xAI marketplace: resolves `plugins/fly` as the plugin via a remote source subpath, so the payload exposes `plugins/fly/.grok-plugin/plugin.json`, `plugins/fly/.grok-plugin/mcp.json`, `plugins/fly/skills` and `plugins/fly/hooks` directly.
 - Cursor: `plugins/fly/.cursor-plugin/plugin.json`, `plugins/fly/.cursor-plugin/mcp.json`, and the repo marketplace at `.cursor-plugin/marketplace.json`.
 - Google Antigravity: `plugins/fly/.antigravity-plugin/plugin.json` and `plugins/fly/mcp_config.json`, with `plugins/fly/README.md` as the pre-install page and `plugins/fly/assets/logo.svg` as the logo. Antigravity resolves every component path from `plugins/fly`, so only `plugin.json` lives in `.antigravity-plugin/`; its MCP config uses `serverUrl` and namespaces the server key as `fly-mcp`.
 - skills.sh (`npx skills add superfly/skills`): discovers the skills through `.claude-plugin/marketplace.json` and `skills.sh.json`, since `plugins/*/skills/` is not one of its default scan paths.
 
-Claude Code and Grok Build load `plugins/fly/hooks/hooks.json`, a `PreToolUse` hook that runs `scripts/fly_guard.py` for the plugin's MCP tools and for `Bash` calls. It returns an `ask` decision before destructive, disruptive or billable `fly`/`sprite` commands and MCP operations, and before Sprite exec commands that warrant a checkpoint. It never echoes command arguments (they can carry secret values). Antigravity does not load this hook.
+Claude Code, Grok Build and Factory Droid load `plugins/fly/hooks/hooks.json`, a `PreToolUse` hook that runs `scripts/fly_guard.py` for the plugin's MCP tools and for `Bash` or `Execute` calls. It returns an `ask` decision before destructive, disruptive or billable `fly`/`sprite` commands and MCP operations, and before Sprite exec commands that warrant a checkpoint. It never echoes command arguments (they can carry secret values). Antigravity does not load this hook.
 
 ## Skill model
 

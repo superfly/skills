@@ -100,7 +100,29 @@ plugin, which adds the hosted MCP connection and a confirmation hook:
 /plugin install fly@fly-skills
 ```
 
-### Fly MCP
+### Factory Droid plugin
+
+Droid can load the existing Claude Code plugin layout; a separate Factory
+manifest is not required. Install the plugin from the repository marketplace:
+
+```bash
+droid plugin marketplace add superfly/skills
+droid plugin marketplace list
+droid plugin install fly@skills --scope project
+```
+
+Use the registered marketplace name printed by `marketplace list` rather than
+the manifest's display name (`fly-skills`). Pinned sources can change that name.
+Use `--scope user` instead for all projects. Start Droid in the project and
+complete Factory login and folder trust, then run `droid mcp auth` to authorize
+Fly separately. `droid mcp list` should show the plugin's `fly` server connected.
+Do not add a duplicate standalone MCP server when the plugin already supplies it.
+
+The shared hook handles Droid's `Execute` shell tool and `fly___*` (and the documented `mcp__fly__*` form) tools.
+For remote development, follow [the Sprite workspace workflow](sprites.md#remote-workspace-workflow);
+installing the plugin does not relocate Droid's built-in file or shell tools.
+
+### Fly MCP connection
 
 The hosted server is `https://mcp.fly.io` over HTTP with browser OAuth. The
 plugin configures it; for a client without the plugin, register it as an HTTP
@@ -147,4 +169,5 @@ command -v sprite && sprite org list
 Plus, when MCP is connected, the organizations and products
 `get_fly_context` lists. Anything missing routes back to the sections above.
 
-Checked against flyctl v0.4.123 on 2026-10-28.
+Checked against flyctl v0.4.123 on 2026-10-28; Droid v1.1.0 plugin installation,
+OAuth, MCP execution and a two-session Sprite workflow on 2026-11-02.

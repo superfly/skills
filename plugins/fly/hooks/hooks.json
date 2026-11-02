@@ -3,7 +3,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "^mcp__plugin_fly_fly__.*$",
+        "matcher": "^(mcp__(plugin_fly_fly|fly)__|fly___).*$",
         "hooks": [
           {
             "type": "command",
@@ -14,7 +14,7 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "^(Bash|Execute)$",
         "hooks": [
           {
             "type": "command",
