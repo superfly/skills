@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Ask for confirmation before risky Fly operations.
 
-Claude Code (and Grok Build) pass PreToolUse hook input as JSON on stdin. Safe
+Claude Code, Grok Build and Factory Droid pass PreToolUse hook input as JSON on stdin. Safe
 calls produce no output, which leaves the client's normal permission policy
 unchanged. Risky calls return an `ask` decision so the user sees the exact tool
 call before it runs.
 
 Two surfaces are covered:
 
-- Fly MCP tools from this plugin's `fly` server (`mcp__plugin_fly_fly__*`):
+- Fly MCP tools from this plugin's `fly` server (`mcp__plugin_fly_fly__*`
+  or Droid's `fly___*`, with `mcp__fly__*` also accepted):
   deletes, lifecycle changes, billable creation, exec, secrets, leases, Managed
   Postgres writes and query-text reads, Sprite destruction, checkpoint
   restores, network-policy replacement, HTTP exposure, and risky Sprite exec.
-- `Bash` calls that run `fly`/`flyctl` or `sprite` destructive subcommands.
+- `Bash` or `Execute` calls that run `fly`/`flyctl` or `sprite` destructive subcommands.
   The skill leaves the client's normal permission policy in place; this hook
   adds operation-specific confirmation when installed as part of the plugin.
 
@@ -29,7 +30,8 @@ import shlex
 import sys
 from typing import Any
 
-MCP_PREFIX = "mcp__plugin_fly_fly__"
+MCP_PREFIXES = ("mcp__plugin_fly_fly__", "mcp__fly__", "fly___")
+SHELL_TOOLS = frozenset({"Bash", "Execute"})
 
 # Keyed on the bare tool name the server exposes. Sprite-level tools are
 # generated from the Sprite environment API and can change between versions, so
@@ -600,12 +602,12 @@ def main() -> int:
         if not isinstance(tool_name, str) or not tool_name:
             raise ValueError("Missing tool name")
         # Never apply Fly's policy to another server or tool.
-        if tool_name != "Bash" and not tool_name.startswith(MCP_PREFIX):
+        if tool_name not in SHELL_TOOLS and not tool_name.startswith(MCP_PREFIXES):
             return 0
         tool_input = payload.get("tool_input")
         if not isinstance(tool_input, dict):
             raise ValueError("Missing tool input")
-        if tool_name == "Bash":
+        if tool_name in SHELL_TOOLS:
             return guard_bash(tool_input)
         return guard_mcp(tool_name, tool_input)
     except Exception:

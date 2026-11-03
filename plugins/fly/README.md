@@ -33,6 +33,21 @@ Claude Code, from this repository's marketplace:
 /plugin install fly@fly-skills
 ```
 
+Factory Droid uses the same Claude Code layout:
+
+```bash
+droid plugin marketplace add superfly/skills
+droid plugin marketplace list
+droid plugin install fly@skills --scope project
+droid mcp auth
+```
+
+Use the registered marketplace name from `marketplace list`; pinned sources
+can have a different name. Factory account login and Fly MCP OAuth are separate.
+The hook recognises Droid's `Execute` and `fly___*` tool names as well as the
+`mcp__fly__*` form. See [setup](skills/fly/references/setup.md) and the
+[remote Sprite workflow](skills/fly/references/sprites.md#remote-workspace-workflow).
+
 Any agent that supports the Agent Skills format:
 
 ```bash
