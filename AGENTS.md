@@ -8,7 +8,7 @@ orchestration skill, `fly`, and the hosted Fly MCP server.
 The shared plugin payload lives in `plugins/fly`.
 
 - Claude Code: `plugins/fly/.claude-plugin/plugin.json`, `plugins/fly/.mcp.json`, and the repo marketplace at `.claude-plugin/marketplace.json`.
-- Factory Droid: the native package in `superfly/fly-droid-plugin` syncs the shared skills and confirmation guard from here. Droid can also import the shared Claude Code layout. The shared hook matches `Execute` and `fly___*` (and the documented `mcp__fly__*` form).
+- Factory Droid: imports the same Claude Code layout, translating `.claude-plugin` and `.mcp.json` in its cache. The shared hook also matches `Execute` and `fly___*` (and the documented `mcp__fly__*` form).
 - OpenAI Codex: `plugins/fly/.codex-plugin/plugin.json`, `plugins/fly/.mcp.json`, and the repo marketplace at `.agents/plugins/marketplace.json`.
 - Grok Build / xAI marketplace: resolves `plugins/fly` as the plugin via a remote source subpath, so the payload exposes `plugins/fly/.grok-plugin/plugin.json`, `plugins/fly/.grok-plugin/mcp.json`, `plugins/fly/skills` and `plugins/fly/hooks` directly.
 - Cursor: `plugins/fly/.cursor-plugin/plugin.json`, `plugins/fly/.cursor-plugin/mcp.json`, and the repo marketplace at `.cursor-plugin/marketplace.json`.
