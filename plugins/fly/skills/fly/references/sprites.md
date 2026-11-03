@@ -102,9 +102,8 @@ suspend on detach and resume on attach, so output is not lost.
 
 MCP `exec` takes `cmd` as an argv array (`["python3", "-c", "print(1)"]`);
 the string form splits on whitespace and breaks on quoting. It returns
-output but **no structured exit status**; capture the command's status explicitly
-when needed. Some runtimes expose raw stream-framing bytes in this output;
-do not save it directly as a source file or patch. If `exec` or
+output but **no exit status**; when the status matters, make the command
+print it (`...; echo "exit=$?"`) and read it from the output. If `exec` or
 a file tool fails with "is not assigned to compute" while `get_sprite_info`
 shows the sprite running, the server cannot route to it yet; report the name
 and ID, do not recreate.
@@ -134,15 +133,14 @@ command in `sprite exec -s <n> --`, or use the MCP tools `service_list`,
 `service_get`, `service_create` (create or update), `service_start`,
 `service_stop`, `service_logs` (bounded).
 
-HTTP exposure varies by runtime: older runtimes use a Sprite-wide HTTP route;
-newer ones return per-service `public_url` and `exposure` fields. Use the URL
-returned by `services get` or `service_get`, not a constructed hostname. A
-field named `public_url` does not mean anonymous access: check `exposure`.
-An idle Sprite may need time after wake before its supervised process is ready;
-use a bounded health-probe retry and verify the actual HTTP status. Get the
-base Sprite URL with `sprite-env info`, `sprite url -s <n>` or `sprite info`.
-Legacy URL auth modes are `sprite` (org members, the default)
-and `public` (the internet). Changing to public is a publication event:
+HTTP exposure: the proxy routes the sprite URL to port 8080 by default, or to
+the one service declaring `--http-port`. Only one service holds an HTTP port.
+A service with one autostarts on the first request, so an idle sprite still
+answers, though a just-woken sprite can take a few seconds before its process
+is ready: probe with a bounded retry and check the real HTTP status. Get the
+URL with `sprite-env info` inside or `sprite url -s <n>` (or `sprite info`)
+outside. URL auth modes: `sprite` (org members, the default) and `public`
+(the internet). Changing to public is a publication event:
 `sprite url update --auth public -s <n>` (newer builds: `sprite config
 update --url-auth public`); confirm first and say what becomes reachable.
 
@@ -155,13 +153,6 @@ Workflow: list first, pick a stable role name (`web`, `api`, `worker`,
 streamed logs, verify with `services get` and an HTTP probe, report name,
 state, port, URL and auth mode. When a start fails, read the logs before
 editing the definition.
-
-If MCP `service_create` returns `missing_service_definition`, inspect
-`sprite-env services help` through MCP `exec`. The native guest CLI can create
-the supervised service on runtimes whose service schema the MCP adapter does
-not yet support. Specify `--dir` for the repository and read the service back
-afterward. This fallback uses the same authorized Sprite; it does not bypass a
-permission denial, change URL exposure, or justify detached shell processes.
 
 ## Checkpoints
 
@@ -221,18 +212,6 @@ Supply credentials as service or exec environment values at run time rather
 than writing them to disk; a checkpoint keeps every secret written to the
 filesystem. Verify what landed (`wc -c`, checksum, `du`) and report what you
 copied and skipped.
-
-File capabilities also vary by runtime. If `file_read` explicitly reports that
-the runtime supports writes but not reads, use `exec` in the same authorized
-Sprite. For a file export, encode its bytes as base64, extract only the encoded
-payload, then verify its decoded byte count and SHA-256 against the remote
-file. Fail on a mismatch; do not remove arbitrary bytes from a patch or treat
-an error response as file content.
-
-After uploading a new workspace, inspect `id` and file ownership before Git or
-build commands. `file_write` can create root-owned files and directories while
-`exec` runs as `sprite`. If needed and authorized, correct ownership only on
-the newly created task directory; do not recursively change unrelated paths.
 
 ## Network policy
 
@@ -311,6 +290,32 @@ At handoff, report the Sprite name/ID, repository path and commit, test result,
 patch location, checkpoint IDs, and preview URL/auth mode. Leave retained
 resources explicit; cleanup needs the user's intent.
 
+## Known runtime issues
+
+Seen on Sprite runtime 0.1.12 with sprite-env 0.1.0 through mcp.fly.io on
+2026-11-02. These are defects, not design. Re-check before relying on a
+workaround, and drop an entry once the runtime no longer shows the problem.
+
+- `exec` output can carry raw stream-framing bytes. Do not save it directly
+  as a source file or patch; extract the payload and verify it.
+- `file_read` can answer that the runtime supports writes but not reads. Use
+  `exec` in the same sprite instead. To export a file, base64-encode it, take
+  only the encoded payload, decode locally, and check the byte count and
+  SHA-256 against the remote file. Fail on a mismatch; never strip bytes from
+  a patch or treat an error response as file content.
+- `file_write` can create root-owned files while `exec` runs as `sprite`.
+  After uploading a workspace, check `id` and ownership before Git or build
+  commands. If authorized, fix ownership on the new task directory only.
+- `service_create` can return `missing_service_definition` on a runtime whose
+  service schema the MCP adapter does not support yet. Run `sprite-env
+  services help` through `exec` and create the service with the guest CLI,
+  passing `--dir` for the repository, then read it back. This uses the same
+  authorized sprite; it does not bypass a denial, change URL exposure, or
+  justify detached shell processes.
+- Some runtimes return per-service `public_url` and `exposure` fields from
+  `service_get`. Prefer a returned URL over a constructed hostname, and read
+  `exposure` before treating `public_url` as anonymous access.
+
 ## Golden path
 
 1. Detect inside or outside. Choose the control plane once.
@@ -325,4 +330,4 @@ resources explicit; cleanup needs the user's intent.
 
 Checked against sprites.dev CLIs and mcp.fly.io on 2026-10-28; remote workflow
 verified with Droid 1.1.0, Sprite runtime 0.1.12 and sprite-env 0.1.0 on
-2026-11-02. Runtime compatibility notes above reflect that live test.
+2026-11-02; "Known runtime issues" lists what that test hit.

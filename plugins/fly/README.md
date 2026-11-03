@@ -44,8 +44,8 @@ droid mcp auth
 
 Use the registered marketplace name from `marketplace list`; pinned sources
 can have a different name. Factory account login and Fly MCP OAuth are separate.
-The hook supports Droid's `Execute` and `fly___*` (and the documented `mcp__fly__*` form) tool names. See
-[setup](skills/fly/references/setup.md) and the
+The hook recognises Droid's `Execute` and `fly___*` tool names as well as the
+`mcp__fly__*` form. See [setup](skills/fly/references/setup.md) and the
 [remote Sprite workflow](skills/fly/references/sprites.md#remote-workspace-workflow).
 
 Any agent that supports the Agent Skills format:

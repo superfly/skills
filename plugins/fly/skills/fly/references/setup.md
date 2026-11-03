@@ -92,8 +92,15 @@ This skill installs from the `superfly/skills` repository:
 npx skills add superfly/skills        # Claude Code, Codex, Cursor, Gemini, Amp and others
 ```
 
-Re-run the same command to update. Claude Code users can also install the
-plugin, which adds the hosted MCP connection and a confirmation hook:
+Re-run the same command to update. flyctl v0.5.2 and later can install the
+skills and register the hosted MCP server in every detected agent at once:
+
+```bash
+fly setup agent
+```
+
+Claude Code users can also install the plugin, which adds the hosted MCP
+connection and a confirmation hook:
 
 ```text
 /plugin marketplace add superfly/skills
@@ -118,9 +125,12 @@ complete Factory login and folder trust, then run `droid mcp auth` to authorize
 Fly separately. `droid mcp list` should show the plugin's `fly` server connected.
 Do not add a duplicate standalone MCP server when the plugin already supplies it.
 
-The shared hook handles Droid's `Execute` shell tool and `fly___*` (and the documented `mcp__fly__*` form) tools.
-For remote development, follow [the Sprite workspace workflow](sprites.md#remote-workspace-workflow);
-installing the plugin does not relocate Droid's built-in file or shell tools.
+The shared hook handles Droid's `Execute` shell tool and its `fly___*` MCP
+tool names, plus the `mcp__fly__*` form. That form also covers a standalone
+`fly` server registered by `fly setup agent` when the plugin is installed. For
+remote development, follow the
+[Sprite workspace workflow](sprites.md#remote-workspace-workflow); installing
+the plugin does not relocate Droid's built-in file or shell tools.
 
 ### Fly MCP connection
 
@@ -169,5 +179,6 @@ command -v sprite && sprite org list
 Plus, when MCP is connected, the organizations and products
 `get_fly_context` lists. Anything missing routes back to the sections above.
 
-Checked against flyctl v0.4.123 on 2026-10-28; Droid v1.1.0 plugin installation,
-OAuth, MCP execution and a two-session Sprite workflow on 2026-11-02.
+Checked against flyctl v0.4.123 on 2026-10-28; `fly setup agent` on flyctl
+v0.5.2, and Droid v1.1.0 plugin installation, OAuth, MCP execution and a
+two-session Sprite workflow, on 2026-11-02.

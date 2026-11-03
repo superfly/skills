@@ -58,7 +58,7 @@ destructive, disruptive and billable operations.
 | Agent | Install |
 |---|---|
 | Claude Code | `/plugin marketplace add superfly/skills` then `/plugin install fly@fly-skills` |
-| Factory Droid | `droid plugin marketplace add superfly/skills`, inspect `droid plugin marketplace list`, then `droid plugin install fly@skills --scope project` for the unpinned source |
+| Factory Droid | `droid plugin marketplace add superfly/skills` then `droid plugin install fly@skills` |
 | Codex | Add this repository as a marketplace (`.agents/plugins/marketplace.json`) |
 | Cursor | Add this repository as a plugin source (`.cursor-plugin/marketplace.json`) |
 | Grok Build | xAI marketplace entry with source subpath `plugins/fly` |
