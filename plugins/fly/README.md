@@ -33,12 +33,13 @@ Claude Code, from this repository's marketplace:
 /plugin install fly@fly-skills
 ```
 
-Factory Droid uses the same Claude Code layout:
+Factory Droid has a [dedicated package](https://github.com/superfly/fly-droid-plugin)
+that syncs this repository's skills and confirmation guard:
 
 ```bash
-droid plugin marketplace add superfly/skills
+droid plugin marketplace add superfly/fly-droid-plugin
 droid plugin marketplace list
-droid plugin install fly@skills --scope project
+droid plugin install fly@fly-droid-plugin --scope project
 droid mcp auth
 ```
 

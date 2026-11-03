@@ -109,17 +109,17 @@ connection and a confirmation hook:
 
 ### Factory Droid plugin
 
-Droid can load the existing Claude Code plugin layout; a separate Factory
-manifest is not required. Install the plugin from the repository marketplace:
+Install the native Factory package from `superfly/fly-droid-plugin`. It syncs
+the shared skills and confirmation guard from this repository:
 
 ```bash
-droid plugin marketplace add superfly/skills
+droid plugin marketplace add superfly/fly-droid-plugin
 droid plugin marketplace list
-droid plugin install fly@skills --scope project
+droid plugin install fly@fly-droid-plugin --scope project
 ```
 
 Use the registered marketplace name printed by `marketplace list` rather than
-the manifest's display name (`fly-skills`). Pinned sources can change that name.
+assuming it from a display label. Pinned sources can change that name.
 Use `--scope user` instead for all projects. Start Droid in the project and
 complete Factory login and folder trust, then run `droid mcp auth` to authorize
 Fly separately. `droid mcp list` should show the plugin's `fly` server connected.

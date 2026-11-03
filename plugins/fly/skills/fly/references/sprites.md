@@ -133,14 +133,17 @@ command in `sprite exec -s <n> --`, or use the MCP tools `service_list`,
 `service_get`, `service_create` (create or update), `service_start`,
 `service_stop`, `service_logs` (bounded).
 
-HTTP exposure: the proxy routes the sprite URL to port 8080 by default, or to
-the one service declaring `--http-port`. Only one service holds an HTTP port.
-A service with one autostarts on the first request, so an idle sprite still
-answers, though a just-woken sprite can take a few seconds before its process
-is ready: probe with a bounded retry and check the real HTTP status. Get the
-URL with `sprite-env info` inside or `sprite url -s <n>` (or `sprite info`)
-outside. URL auth modes: `sprite` (org members, the default) and `public`
-(the internet). Changing to public is a publication event:
+HTTP exposure depends on the runtime. Legacy Sprites route the Sprite URL to
+port 8080 by default, or to the one service declaring `--http-port`. Newer
+provider-backed Sprites support named service endpoints and return per-service
+`public_url` and `exposure` fields. Prefer the URL returned by `service_get`
+or `sprite-env services get`; `public_url` names an address, not anonymous
+access. Check `exposure` before sharing it. A just-woken Sprite can take a few
+seconds before its process is ready: probe with a bounded retry and check the
+real HTTP status. Get the base URL with `sprite-env info` inside or
+`sprite url -s <n>` (or `sprite info`) outside. Legacy URL auth modes are
+`sprite` (org members, the default) and `public` (the internet); newer service
+endpoints can report `authenticated`. Changing to public is a publication event:
 `sprite url update --auth public -s <n>` (newer builds: `sprite config
 update --url-auth public`); confirm first and say what becomes reachable.
 
@@ -312,9 +315,6 @@ workaround, and drop an entry once the runtime no longer shows the problem.
   passing `--dir` for the repository, then read it back. This uses the same
   authorized sprite; it does not bypass a denial, change URL exposure, or
   justify detached shell processes.
-- Some runtimes return per-service `public_url` and `exposure` fields from
-  `service_get`. Prefer a returned URL over a constructed hostname, and read
-  `exposure` before treating `public_url` as anonymous access.
 
 ## Golden path
 
